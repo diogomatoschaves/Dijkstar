@@ -32,7 +32,8 @@ class Graph(collections.MutableMapping):
     """
 
     def __init__(self, data=None, undirected=False):
-        self._data = {}
+        self.nodes = {}
+        self._data = collections.defaultdict(dict)
         self._undirected = undirected
         self._incoming = collections.defaultdict(dict)
         if data is not None:
@@ -97,19 +98,23 @@ class Graph(collections.MutableMapping):
         incoming = self._incoming
         undirected = self._undirected
 
-        if u in data:
+        if u in self.nodes:
             neighbors = data[u]
             neighbors[v] = edge
         else:
+            self.add_node(u)
             data[u] = {v: edge}
+
         incoming[v][u] = edge
 
         if undirected:
-            if v in data:
+            if v in self.nodes:
                 neighbors = data[v]
                 neighbors[u] = edge
             else:
+                self.add_node(v)
                 data[v] = {u: edge}
+
             incoming[u][v] = edge
 
         return edge
@@ -140,7 +145,7 @@ class Graph(collections.MutableMapping):
             count = count // 2
         return count
 
-    def add_node(self, u, neighbors=None):
+    def add_node(self, u, neighbors=None, **kwargs):
         """Add node ``u`` and, optionally, its ``neighbors``.
 
         Adds or updates the node ``u``. If ``u`` isn't already in the
@@ -159,25 +164,26 @@ class Graph(collections.MutableMapping):
         data = self._data
         incoming = self._incoming
         undirected = self._undirected
-        directed = not undirected
+        directed = not self._undirected
 
         if neighbors is None:
             neighbors = {}
 
-        if directed or u not in data:
+        if directed or u not in self.nodes:
             # For a directed graph, add u if it's not present or replace
             # it completely if is.
             #
             # For an undirected graph, add u if it's not present. If it
             # is, add new neighbors and update existing neighbors, but
             # leave other neighbors alone.
-            data[u] = {}
+            self.nodes[u] = kwargs
 
         node_data = data[u]
 
         for v, e in neighbors.items():
             node_data[v] = e
             incoming[v][u] = e
+
             if undirected:
                 if v not in data:
                     data[v] = {u: e}
@@ -185,11 +191,11 @@ class Graph(collections.MutableMapping):
                     data[v][u] = e
                 incoming[u][v] = e
 
-        return node_data
+        return self.nodes[u]
 
     def get_node(self, u):
         """Get node ``u``."""
-        return self._data[u]
+        return {**self.nodes[u], "neighbors": self._data[u]}
 
     def remove_node(self, u):
         """Remove node ``u``.
